@@ -9,16 +9,20 @@ An end-to-end computer vision and full-stack web application that classifies bra
 ```txt
 brain-tumor-ai/
 ├── ml_pipeline/
-│   ├── train.py               # Optimized two-stage training + metrics + model export
-│   └── brain_tumor_resnet18.pth
+│   └── train.py                     # Trains model + auto-exports 4 sample MRI scans
 ├── backend/
-│   ├── main.py                # FastAPI server with multi-layer Grad-CAM++ inference
-│   └── requirements.txt
+│   ├── main.py                      # FastAPI + OOD entropy/confidence guardrail + Grad-CAM++
+│   └── brain_tumor_resnet18.pth
 └── frontend/
-    ├── package.json
+    ├── public/
+    │   └── samples/                 # Auto-populated by train.py
+    │       ├── glioma.jpg
+    │       ├── meningioma.jpg
+    │       ├── pituitary.jpg
+    │       └── notumor.jpg
     └── src/
-        ├── App.jsx            # Main React dashboard with interactive heatmap inspector
-        └── App.css            # Clean dark-mode clinical UI styling
+        ├── App.jsx                  # Editorial landing page + interactive XAI workbench
+        └── App.css                  # Clean light-mode architectural typography & layout
 ```
 
 ## Setup & Local Installation
