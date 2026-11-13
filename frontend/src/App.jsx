@@ -1,66 +1,91 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import "./App.css";
 
-const PIPELINE_STEPS = [
+const SAMPLE_SCANS = [
+  {
+    id: "glioma",
+    title: "Glioma",
+    note: "Intra-axial infiltrative mass",
+    src: "/samples/glioma.jpg",
+  },
+  {
+    id: "meningioma",
+    title: "Meningioma",
+    note: "Extra-axial dural attachment",
+    src: "/samples/meningioma.jpg",
+  },
+  {
+    id: "pituitary",
+    title: "Pituitary",
+    note: "Sellar region adenoma",
+    src: "/samples/pituitary.jpg",
+  },
+  {
+    id: "notumor",
+    title: "No Tumor",
+    note: "Normal cranial parenchyma",
+    src: "/samples/notumor.jpg",
+  },
+];
+
+const PIPELINE_STAGES = [
   {
     id: "original",
-    stepNumber: "01",
-    title: "Preprocessed Input",
-    layer: "224×224 Normalized Tensor",
-    description:
-      "The raw MRI scan is converted to a 3-channel tensor, resized to 224×224, and normalized using ImageNet channel statistics.",
+    index: "01",
+    name: "Input Normalization",
+    module: "224x224 RGB Tensor",
+    summary:
+      "The raw scan is standardized to 224x224 resolution, converted to three channels, and normalized against training distribution statistics.",
   },
   {
     id: "layer2_heatmap",
-    stepNumber: "02",
-    title: "Early Edge & Texture Maps",
-    layer: "ResNet18 · layer2[-1]",
-    description:
-      "Detects skull boundaries, tissue intensity gradients, and basic anatomical contours across the cranial cavity.",
+    index: "02",
+    name: "Cranial Edge Extraction",
+    module: "ResNet18 layer2[-1]",
+    summary:
+      "Early residual blocks isolate skull boundaries, cortical folding, and high-contrast tissue interfaces across the scan.",
   },
   {
     id: "layer3_heatmap",
-    stepNumber: "03",
-    title: "Mid-Level Structural Patterns",
-    layer: "ResNet18 · layer3[-1]",
-    description:
-      "Fine-tuned convolutional blocks isolate abnormal tissue density, ventricular asymmetry, and mass boundaries.",
+    index: "03",
+    name: "Structural Asymmetry",
+    module: "ResNet18 layer3[-1]",
+    summary:
+      "Intermediate convolutional filters respond to ventricular displacement, mass effect, and abnormal intensity gradients.",
   },
   {
     id: "layer4_heatmap",
-    stepNumber: "04",
-    title: "Final Tumor Localization",
-    layer: "ResNet18 · layer4[-1] (Grad-CAM++)",
-    description:
-      "High-level semantic activations pinpointing the exact region driving the final classification decision.",
+    index: "04",
+    name: "Pathology Localization",
+    module: "ResNet18 layer4[-1] Grad-CAM++",
+    summary:
+      "Second-order gradient weighting isolates the specific anatomical region responsible for the final classification output.",
   },
 ];
 
 export default function App() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [selectedSampleId, setSelectedSampleId] = useState(null);
+  const [fileName, setFileName] = useState("");
   const [result, setResult] = useState(null);
   const [activeStage, setActiveStage] = useState("layer4_heatmap");
-  const [heatmapOpacity, setHeatmapOpacity] = useState(0.55);
+  const [opacity, setOpacity] = useState(0.55);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setResult(null);
-    setError("");
+  const workbenchRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const scrollToWorkbench = () => {
+    workbenchRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleAnalyze = async () => {
-    if (!selectedFile) return;
+  const runInference = async (fileBlob, displayName) => {
     setLoading(true);
     setError("");
+    setFileName(displayName);
 
     const formData = new FormData();
-    formData.append("file", selectedFile);
+    formData.append("file", fileBlob, displayName);
 
     try {
       const response = await fetch("http://localhost:8000/analyze", {
@@ -68,188 +93,351 @@ export default function App() {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("Failed to analyze MRI scan.");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Inference request failed.");
       }
       const data = await response.json();
       setResult(data);
       setActiveStage("layer4_heatmap");
     } catch (err) {
-      setError(err.message || "Error connecting to inference server.");
+      setError(err.message || "Unable to reach the inference server.");
     } finally {
       setLoading(false);
     }
   };
 
-  const currentStepMeta =
-    PIPELINE_STEPS.find((step) => step.id === activeStage) || PIPELINE_STEPS[3];
+  const handleSampleSelect = async (sample) => {
+    setSelectedSampleId(sample.id);
+    try {
+      const res = await fetch(sample.src);
+      if (!res.ok) throw new Error("Sample scan not found in public/samples/.");
+      const blob = await res.blob();
+      await runInference(blob, `${sample.id}.jpg`);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedSampleId(null);
+    await runInference(file, file.name);
+  };
+
+  const currentStage =
+    PIPELINE_STAGES.find((stage) => stage.id === activeStage) ||
+    PIPELINE_STAGES[3];
 
   return (
-    <div className="app-container">
-      <header className="top-bar">
-        <div>
-          <h1>NeuroScan XAI</h1>
-          <p className="subtitle">
-            Explainable Brain Tumor MRI Classification &amp; Grad-CAM++ Pipeline
-          </p>
+    <div className="site-shell">
+      <nav className="top-nav">
+        <a href="#top" className="brand-mark">
+          Brain Tumor AI Detector
+        </a>
+        <div className="nav-links">
+          <a href="#methodology">Methodology</a>
+          <a href="#workbench">Diagnostic Workbench</a>
         </div>
-        <span className="badge">ResNet18 · Two-Stage Fine-Tuned</span>
+      </nav>
+
+      {/* Editorial Hero */}
+      <header id="top" className="hero-section">
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <h1>
+              Interpretable cranial MRI classification with multi-layer
+              Grad-CAM++.
+            </h1>
+            <p className="hero-lead">
+              A fine-tuned ResNet18 vision pipeline that classifies glioma,
+              meningioma, pituitary tumors, and healthy scans while exposing
+              spatial feature activations across network depths.
+            </p>
+            <div className="hero-actions">
+              <button className="btn-solid" onClick={scrollToWorkbench}>
+                Launch Interactive Workbench
+              </button>
+              <a href="#methodology" className="btn-outline">
+                Review Architecture
+              </a>
+            </div>
+          </div>
+
+          <div className="hero-metrics">
+            <div className="metric-block">
+              <span className="metric-number">4</span>
+              <span className="metric-caption">
+                Diagnostic classes evaluated across 1,600 unseen test scans
+              </span>
+            </div>
+            <div className="metric-block">
+              <span className="metric-number">3</span>
+              <span className="metric-caption">
+                Convolutional depths mapped from early edges to tumor
+                localization
+              </span>
+            </div>
+            <div className="metric-block">
+              <span className="metric-number">65%</span>
+              <span className="metric-caption">
+                Confidence floor paired with Shannon entropy filtering for
+                out-of-distribution inputs
+              </span>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <main className="workspace">
-        {/* Left Column: Upload & Pipeline Stepper */}
-        <section className="panel control-panel">
-          <h2>1. Upload MRI Scan</h2>
-          <label className="upload-box">
-            <input type="file" accept="image/*" onChange={handleFileChange} />
-            {previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="Selected MRI"
-                className="thumb-preview"
-              />
-            ) : (
-              <span>Click to select a T1/T2 MRI scan (JPG, PNG)</span>
-            )}
-          </label>
+      {/* Architecture Overview */}
+      <section id="methodology" className="methodology-section">
+        <div className="section-heading">
+          <h2>Pipeline Architecture</h2>
+          <p>
+            Medical imaging requires both spatial precision and calibrated
+            uncertainty. Each scan passes through three distinct stages before a
+            classification is surfaced.
+          </p>
+        </div>
 
-          <button
-            className="primary-btn"
-            onClick={handleAnalyze}
-            disabled={!selectedFile || loading}
-          >
-            {loading
-              ? "Running Inference & Grad-CAM++..."
-              : "Run Diagnostic Pipeline"}
-          </button>
-
-          {error && <div className="error-banner">{error}</div>}
-
-          <div className="pipeline-section">
-            <h2>2. Model Workflow Stages</h2>
-            <p className="hint">
-              Select a stage below to inspect how the network narrows its focus:
+        <div className="method-columns">
+          <article className="method-item">
+            <h3>Two-Stage Fine-Tuning</h3>
+            <p>
+              The classification head is trained first to stabilize gradients
+              before unfreezing residual blocks layer3 and layer4 under a cosine
+              annealing schedule, adapting pretrained filters to cranial tissue
+              contrast.
             </p>
-            <div className="stepper-list">
-              {PIPELINE_STEPS.map((step) => (
+          </article>
+          <article className="method-item">
+            <h3>Second-Order Localization</h3>
+            <p>
+              Grad-CAM++ computes pixel-wise gradient weights across multiple
+              convolutional layers, producing sharper boundaries on irregular
+              lesions than standard global average pooling.
+            </p>
+          </article>
+          <article className="method-item">
+            <h3>Out-of-Distribution Guardrail</h3>
+            <p>
+              Predictions falling below 65% confidence or exceeding 0.72
+              normalized prediction entropy are flagged as uncertain, preventing
+              forced classifications on non-MRI uploads.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* Interactive Diagnostic Workbench */}
+      <section id="workbench" ref={workbenchRef} className="workbench-section">
+        <div className="workbench-header">
+          <div>
+            <h2>Diagnostic Workbench</h2>
+            <p>
+              Select a reference MRI scan below or upload a local image to
+              inspect layer activations.
+            </p>
+          </div>
+
+          <div className="upload-trigger">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              hidden
+            />
+            <button
+              className="btn-outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+            >
+              Upload Custom Scan
+            </button>
+          </div>
+        </div>
+
+        {/* One-Click Sample Gallery */}
+        <div className="sample-strip">
+          {SAMPLE_SCANS.map((sample) => (
+            <button
+              key={sample.id}
+              className={`sample-card ${selectedSampleId === sample.id ? "selected" : ""}`}
+              onClick={() => handleSampleSelect(sample)}
+              disabled={loading}
+            >
+              <img
+                src={sample.src}
+                alt={sample.title}
+                className="sample-thumb"
+              />
+              <div className="sample-meta">
+                <strong>{sample.title}</strong>
+                <span>{sample.note}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {error && <div className="status-alert error">{error}</div>}
+
+        {/* Main Inspector Grid */}
+        <div className="inspector-grid">
+          {/* Left: Layer Depth Selector */}
+          <div className="inspector-column stages-col">
+            <h3>Activation Depth</h3>
+            <div className="stage-list">
+              {PIPELINE_STAGES.map((stage) => (
                 <button
-                  key={step.id}
-                  className={`step-card ${activeStage === step.id ? "active" : ""}`}
-                  onClick={() => setActiveStage(step.id)}
-                  disabled={!result}
+                  key={stage.id}
+                  className={`stage-row ${activeStage === stage.id ? "active" : ""}`}
+                  onClick={() => setActiveStage(stage.id)}
+                  disabled={!result || loading}
                 >
-                  <div className="step-header">
-                    <span className="step-num">{step.stepNumber}</span>
-                    <strong>{step.title}</strong>
+                  <span className="stage-idx">{stage.index}</span>
+                  <div className="stage-text">
+                    <strong>{stage.name}</strong>
+                    <span>{stage.module}</span>
                   </div>
-                  <span className="step-layer">{step.layer}</span>
                 </button>
               ))}
             </div>
           </div>
-        </section>
 
-        {/* Center Column: Interactive Heatmap Stage */}
-        <section className="panel visualizer-panel">
-          <div className="panel-header">
-            <h2>Interactive Activation Inspector</h2>
-            {result && activeStage !== "original" && (
-              <div className="slider-control">
-                <label htmlFor="opacity">
-                  Heatmap Opacity: {Math.round(heatmapOpacity * 100)}%
-                </label>
-                <input
-                  id="opacity"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={heatmapOpacity}
-                  onChange={(e) =>
-                    setHeatmapOpacity(parseFloat(e.target.value))
-                  }
-                />
-              </div>
-            )}
-          </div>
+          {/* Center: Layered Scan Viewport */}
+          <div className="inspector-column viewport-col">
+            <div className="viewport-toolbar">
+              <span className="active-file-label">
+                {loading
+                  ? "Processing scan..."
+                  : fileName
+                    ? `Active scan: ${fileName}`
+                    : "No scan loaded"}
+              </span>
 
-          <div className="canvas-wrapper">
-            {!result ? (
-              <div className="placeholder-stage">
-                <p>
-                  Upload an MRI scan and run the pipeline to inspect layer
-                  activations.
-                </p>
-              </div>
-            ) : (
-              <div className="layered-viewport">
-                <img
-                  src={result.images.original}
-                  alt="Base MRI"
-                  className="base-mri"
-                />
-                {activeStage !== "original" && (
-                  <img
-                    src={result.images[activeStage]}
-                    alt="Grad-CAM Overlay"
-                    className="heatmap-overlay"
-                    style={{ opacity: heatmapOpacity }}
+              {result && activeStage !== "original" && (
+                <div className="opacity-control">
+                  <label htmlFor="cam-opacity">
+                    Overlay {Math.round(opacity * 100)}%
+                  </label>
+                  <input
+                    id="cam-opacity"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={opacity}
+                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
                   />
+                </div>
+              )}
+            </div>
+
+            <div className="scan-stage">
+              {!result ? (
+                <div className="empty-stage">
+                  <p>
+                    Choose any sample scan above or upload an image to begin
+                    inspection.
+                  </p>
+                </div>
+              ) : (
+                <div className="scan-composite">
+                  <img
+                    src={result.images.original}
+                    alt="Normalized MRI"
+                    className="scan-base"
+                  />
+                  {activeStage !== "original" && (
+                    <img
+                      src={result.images[activeStage]}
+                      alt="Grad-CAM++ Activation"
+                      className="scan-heatmap"
+                      style={{ opacity }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="stage-caption">
+              <strong>{currentStage.name}</strong>
+              <p>{currentStage.summary}</p>
+            </div>
+          </div>
+
+          {/* Right: Diagnostic Output & OOD Guardrail */}
+          <div className="inspector-column output-col">
+            <h3>Classification Output</h3>
+
+            {!result ? (
+              <p className="muted-note">
+                Probability distributions and confidence diagnostics will appear
+                here once a scan is analyzed.
+              </p>
+            ) : (
+              <>
+                {result.is_ood && (
+                  <div className="ood-warning">
+                    <strong>Out-of-Distribution Input Detected</strong>
+                    <p>
+                      Model confidence ({result.confidence}%) or prediction
+                      entropy ({result.entropy}) indicates this image may not be
+                      a valid cranial MRI scan.
+                    </p>
+                  </div>
                 )}
-              </div>
+
+                <div
+                  className={`diagnosis-summary ${result.is_ood ? "uncertain" : ""}`}
+                >
+                  <span className="summary-label">Primary Prediction</span>
+                  <div className="summary-title">{result.prediction}</div>
+                  <div className="summary-metrics">
+                    <span>Confidence: {result.confidence}%</span>
+                    <span>Entropy: {result.entropy}</span>
+                  </div>
+                </div>
+
+                <div className="distribution-block">
+                  <h4>Class Distribution</h4>
+                  {result.probabilities.map((item) => (
+                    <div key={item.raw_label} className="dist-row">
+                      <div className="dist-header">
+                        <span>{item.label}</span>
+                        <span>{item.probability}%</span>
+                      </div>
+                      <div className="dist-track">
+                        <div
+                          className="dist-fill"
+                          style={{ width: `${item.probability}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="scale-bar">
+                  <span>Low activation</span>
+                  <div className="scale-gradient" />
+                  <span>High activation</span>
+                </div>
+              </>
             )}
           </div>
+        </div>
+      </section>
 
-          <div className="stage-explanation">
-            <div className="stage-tag">{currentStepMeta.layer}</div>
-            <h3>{currentStepMeta.title}</h3>
-            <p>{currentStepMeta.description}</p>
-          </div>
-        </section>
-
-        {/* Right Column: Classification Results & Confidence */}
-        <section className="panel results-panel">
-          <h2>3. Diagnostic Output</h2>
-          {!result ? (
-            <p className="hint">
-              Results and class probability distributions will appear here.
-            </p>
-          ) : (
-            <>
-              <div className="prediction-card">
-                <span className="pred-label">Primary Classification</span>
-                <div className="pred-value">{result.prediction}</div>
-                <div className="pred-conf">
-                  Confidence: {result.confidence}%
-                </div>
-              </div>
-
-              <h3>Class Probability Breakdown</h3>
-              <div className="prob-list">
-                {result.probabilities.map((item) => (
-                  <div key={item.raw_label} className="prob-item">
-                    <div className="prob-labels">
-                      <span>{item.label}</span>
-                      <span>{item.probability}%</span>
-                    </div>
-                    <div className="prob-bar-bg">
-                      <div
-                        className="prob-bar-fill"
-                        style={{ width: `${item.probability}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="heatmap-legend">
-                <span>Low Activation</span>
-                <div className="jet-gradient" />
-                <span>High Activation</span>
-              </div>
-            </>
-          )}
-        </section>
-      </main>
+      {/* Medical Disclaimer Footer */}
+      <footer className="site-footer">
+        <p>
+          Medical Disclaimer: This tool is an educational demonstration
+          developed for research and studying. It is not a cleared medical
+          device and must not be used for clinical diagnosis, triage, or patient
+          treatment decisions.
+        </p>
+      </footer>
     </div>
   );
 }

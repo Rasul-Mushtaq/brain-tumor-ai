@@ -12,9 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
-app = FastAPI(title="Brain Tumor MRI Explainable AI API")
+app = FastAPI(title="Brain Tumor MRI Scans Detector")
 
-# Allow React dev server to communicate with FastAPI
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +24,6 @@ app.add_middleware(
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load trained model artifact
 checkpoint = torch.load("brain_tumor_resnet18.pth", map_location=device)
 CLASS_NAMES = checkpoint["class_names"]
 MODEL_ACCURACY = checkpoint.get("accuracy", 0.0)
@@ -39,7 +37,6 @@ model.load_state_dict(checkpoint["model_state_dict"])
 model.to(device)
 model.eval()
 
-# Ensure gradients are enabled for Grad-CAM++
 for param in model.parameters():
     param.requires_grad = True
 
@@ -53,8 +50,10 @@ preprocess = transforms.Compose([
     transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
 ])
 
+CONFIDENCE_THRESHOLD = 0.65
+ENTROPY_THRESHOLD = 0.72
+
 def encode_rgb_to_base64(rgb_array: np.ndarray) -> str:
-    """Converts an HxWx3 uint8 RGB numpy array into a PNG data URI."""
     pil_img = Image.fromarray(rgb_array.astype(np.uint8))
     buffer = io.BytesIO()
     pil_img.save(buffer, format="PNG")
@@ -62,15 +61,19 @@ def encode_rgb_to_base64(rgb_array: np.ndarray) -> str:
     return f"data:image/png;base64,{encoded}"
 
 def generate_layer_cam(input_tensor: torch.Tensor, target_layer, target_class_idx: int) -> np.ndarray:
-    """Generates a colored RGB heatmap (without image blend) so the frontend can control opacity."""
     targets = [ClassifierOutputTarget(target_class_idx)]
     with GradCAMPlusPlus(model=model, target_layers=[target_layer]) as cam:
         grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
-    
+
     heatmap_uint8 = np.uint8(255 * grayscale_cam)
     heatmap_bgr = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
-    heatmap_rgb = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
-    return heatmap_rgb
+    return cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
+
+def compute_normalized_entropy(probs: np.ndarray) -> float:
+    eps = 1e-12
+    entropy = -np.sum(probs * np.log(probs + eps))
+    max_entropy = np.log(len(probs))
+    return float(entropy / max_entropy)
 
 @app.get("/health")
 def health_check():
@@ -83,19 +86,17 @@ def health_check():
 @app.post("/analyze")
 async def analyze_mri(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image.")
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image.")
 
     contents = await file.read()
     try:
         raw_image = Image.open(io.BytesIO(contents)).convert("RGB")
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid image file.")
+        raise HTTPException(status_code=400, detail="Unable to decode image file.")
 
-    # Prepare clean 224x224 base image for UI alignment
     resized_rgb = np.array(raw_image.resize((224, 224)))
     input_tensor = preprocess(raw_image).unsqueeze(0).to(device)
 
-    # Forward pass for prediction probabilities
     with torch.no_grad():
         logits = model(input_tensor)
         probs = F.softmax(logits, dim=1)[0].cpu().numpy()
@@ -103,8 +104,10 @@ async def analyze_mri(file: UploadFile = File(...)):
     pred_idx = int(np.argmax(probs))
     pred_class = CLASS_NAMES[pred_idx]
     confidence = float(probs[pred_idx])
+    norm_entropy = compute_normalized_entropy(probs)
 
-    # Generate Multi-Stage Grad-CAM++ Heatmaps to illustrate the CNN workflow
+    is_ood = bool(confidence < CONFIDENCE_THRESHOLD or norm_entropy > ENTROPY_THRESHOLD)
+
     cam_early = generate_layer_cam(input_tensor, model.layer2[-1], pred_idx)
     cam_mid = generate_layer_cam(input_tensor, model.layer3[-1], pred_idx)
     cam_final = generate_layer_cam(input_tensor, model.layer4[-1], pred_idx)
@@ -120,8 +123,11 @@ async def analyze_mri(file: UploadFile = File(...)):
     probabilities.sort(key=lambda item: item["probability"], reverse=True)
 
     return {
-        "prediction": pred_class.replace("_", " ").title(),
+        "prediction": "Uncertain / Non-MRI Input" if is_ood else pred_class.replace("_", " ").title(),
+        "raw_prediction": pred_class.replace("_", " ").title(),
         "confidence": round(confidence * 100, 2),
+        "entropy": round(norm_entropy, 3),
+        "is_ood": is_ood,
         "probabilities": probabilities,
         "images": {
             "original": encode_rgb_to_base64(resized_rgb),
