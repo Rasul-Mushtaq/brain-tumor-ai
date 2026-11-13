@@ -140,3 +140,21 @@ torch.save({
     "accuracy": final_acc
 }, "brain_tumor_resnet18.pth")
 print("Saved brain_tumor_resnet18.pth successfully.")
+
+import shutil
+
+# 7. Export one test MRI scan per class for the frontend sample gallery
+sample_dir = "exported_samples"
+os.makedirs(sample_dir, exist_ok=True)
+
+exported_classes = set()
+for img_path, label_idx in test_ds.samples:
+    class_name = class_names[label_idx]
+    if class_name not in exported_classes:
+        dest_path = os.path.join(sample_dir, f"{class_name}.jpg")
+        shutil.copy(img_path, dest_path)
+        exported_classes.add(class_name)
+    if len(exported_classes) == len(class_names):
+        break
+
+print(f"Exported {len(exported_classes)} sample scans to '{sample_dir}/'.")
