@@ -1,18 +1,19 @@
+import os
 import io
 import base64
-import cv2
-import numpy as np
-from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models, transforms
+import numpy as np
+from PIL import Image
+import cv2
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import CORSMiddleware
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
-app = FastAPI(title="NeuroScan XAI Inference Engine")
+app = FastAPI(title="Brain Tumor MRI Scans Inference Engine")
 
 # Allow requests from your React development server
 app.add_middleware(

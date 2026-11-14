@@ -114,7 +114,7 @@ export default function App() {
     formData.append("file", fileBlob, displayName);
 
     try {
-      const response = await fetch("http://localhost:8000/analyze", {
+      const response = await fetch("http://127.0.0.1:8000/analyze", {
         method: "POST",
         body: formData,
       });
@@ -130,7 +130,7 @@ export default function App() {
     } catch (err) {
       setError(
         err.message.includes("Failed to fetch")
-          ? "Unable to connect to the backend server. Please verify FastAPI is running on http://localhost:8000."
+          ? "Unable to connect to the backend server. Please verify FastAPI is running on http://127.0.0.1:8000."
           : err.message,
       );
     } finally {
