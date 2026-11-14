@@ -4,6 +4,15 @@ An end-to-end computer vision and full-stack web application that classifies bra
 
 > _Note: This project is for learning purposes and not for diagnosis._
 
+> ## Tech Stack
+
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5)
+
 ## Project Structure:
 
 ```txt
@@ -21,7 +30,7 @@ brain-tumor-ai/
     │       ├── pituitary.jpg
     │       └── notumor.jpg
     └── src/
-        └── App.jsx                  # Editorial landing page + interactive XAI workbench
+        └── App.jsx                  # Landing page + interactive workbench
 ```
 
 ## Setup & Local Installation
