@@ -12,8 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
-app = FastAPI(title="Brain Tumor MRI Scans Detector")
+app = FastAPI(title="NeuroScan XAI Inference Engine")
 
+# Allow requests from your React development server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,9 +25,13 @@ app.add_middleware(
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-checkpoint = torch.load("brain_tumor_resnet18.pth", map_location=device)
-CLASS_NAMES = checkpoint["class_names"]
-MODEL_ACCURACY = checkpoint.get("accuracy", 0.0)
+# Load model checkpoint
+try:
+    checkpoint = torch.load("brain_tumor_resnet18.pth", map_location=device)
+    CLASS_NAMES = checkpoint["class_names"]
+    MODEL_ACCURACY = checkpoint.get("accuracy", 0.0)
+except Exception as e:
+    raise RuntimeError(f"Failed to load 'brain_tumor_resnet18.pth'. Did you run train.py first? Error: {e}")
 
 model = models.resnet18(weights=None)
 model.fc = nn.Sequential(
@@ -86,13 +91,13 @@ def health_check():
 @app.post("/analyze")
 async def analyze_mri(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Uploaded file must be an image.")
+        raise HTTPException(status_code=400, detail="Uploaded file must be a valid image.")
 
     contents = await file.read()
     try:
         raw_image = Image.open(io.BytesIO(contents)).convert("RGB")
     except Exception:
-        raise HTTPException(status_code=400, detail="Unable to decode image file.")
+        raise HTTPException(status_code=400, detail="Unable to decode uploaded image file.")
 
     resized_rgb = np.array(raw_image.resize((224, 224)))
     input_tensor = preprocess(raw_image).unsqueeze(0).to(device)
@@ -108,6 +113,7 @@ async def analyze_mri(file: UploadFile = File(...)):
 
     is_ood = bool(confidence < CONFIDENCE_THRESHOLD or norm_entropy > ENTROPY_THRESHOLD)
 
+    # Generate Grad-CAM++ heatmaps safely across network layers
     cam_early = generate_layer_cam(input_tensor, model.layer2[-1], pred_idx)
     cam_mid = generate_layer_cam(input_tensor, model.layer3[-1], pred_idx)
     cam_final = generate_layer_cam(input_tensor, model.layer4[-1], pred_idx)
