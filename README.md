@@ -21,8 +21,7 @@ brain-tumor-ai/
     │       ├── pituitary.jpg
     │       └── notumor.jpg
     └── src/
-        ├── App.jsx                  # Editorial landing page + interactive XAI workbench
-        └── App.css                  # Clean light-mode architectural typography & layout
+        └── App.jsx                  # Editorial landing page + interactive XAI workbench
 ```
 
 ## Setup & Local Installation
