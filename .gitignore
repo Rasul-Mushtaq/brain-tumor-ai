@@ -1,7 +1,21 @@
+# python / pytorch
 __pycache__/
-node_modules/
+*.py[cod]
+*$py.class
 *.pt
+.venv/
+venv/
+ENV/
+
+# model checkpoint
 *.pth
-build/
-*.venv
-*.vscode
+
+# frontend
+frontend/node_modules
+frontend/build
+dist/
+
+# IDE
+.vscode/
+.DS_Store
+Thumbs.db
