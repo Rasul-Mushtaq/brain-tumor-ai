@@ -11,6 +11,7 @@ An end-to-end computer vision and full-stack web application that classifies bra
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38BDF8?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5)
 
 ## Project Structure:
@@ -94,4 +95,6 @@ Open `http://localhost:3000` in your browser to upload MRI scans and inspect lay
 
 ---
 
-> _(Note: Because `.pth` model weight files are typically 40MB+ and are excluded in `.gitignore` to keep your repository clean, consider hosting your trained `brain_tumor_resnet18.pth` file under a **GitHub Release** on your repository so anyone cloning the project can download the weights directly without retraining.)_
+### Data Source:
+
+[Kaggle Brain Tumor MRI dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset)
