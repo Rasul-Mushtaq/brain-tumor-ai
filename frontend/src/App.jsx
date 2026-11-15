@@ -517,7 +517,7 @@ export default function App() {
                     />
                   )}
                   <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-[11px] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                    Click to inspect $\rightarrow$
+                    Click to inspect →
                   </div>
                 </div>
               )}

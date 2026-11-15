@@ -1,21 +1,50 @@
 import os
 import io
 import base64
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torchvision import models, transforms
+from contextlib import asynccontextmanager
 import numpy as np
 from PIL import Image
-import cv2
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware import CORSMiddleware
-from pytorch_grad_cam import GradCAMPlusPlus
-from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Brain Tumor MRI Scans Inference Engine")
+# Global variables
+model = None
+CLASS_NAMES = []
+MODEL_ACCURACY = 0.0
+device = None
 
-# Allow requests from your React development server
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global model, CLASS_NAMES, MODEL_ACCURACY, device
+    
+    print("Initializing environment and PyTorch...")
+    import torch
+    import torch.nn as nn
+    from torchvision import models
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    print("Loading model checkpoint...")
+    checkpoint = torch.load("brain_tumor_resnet18.pth", map_location="cpu")
+    CLASS_NAMES = checkpoint["class_names"]
+    MODEL_ACCURACY = checkpoint.get("accuracy", 0.0)
+
+    temp_model = models.resnet18(weights=None)
+    temp_model.fc = nn.Sequential(
+        nn.Dropout(0.3),
+        nn.Linear(temp_model.fc.in_features, len(CLASS_NAMES))
+    )
+    temp_model.load_state_dict(checkpoint["model_state_dict"])
+    temp_model.to(device)
+    temp_model.eval()
+    
+    model = temp_model
+    print("Startup complete!")
+    yield
+    model = None
+
+app = FastAPI(title="Brain Tumor MRI Scans Inference Engine", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,63 +52,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Load model checkpoint
-try:
-    checkpoint = torch.load("brain_tumor_resnet18.pth", map_location=device)
-    CLASS_NAMES = checkpoint["class_names"]
-    MODEL_ACCURACY = checkpoint.get("accuracy", 0.0)
-except Exception as e:
-    raise RuntimeError(f"Failed to load 'brain_tumor_resnet18.pth'. Did you run train.py first? Error: {e}")
-
-model = models.resnet18(weights=None)
-model.fc = nn.Sequential(
-    nn.Dropout(0.3),
-    nn.Linear(model.fc.in_features, len(CLASS_NAMES))
-)
-model.load_state_dict(checkpoint["model_state_dict"])
-model.to(device)
-model.eval()
-
-for param in model.parameters():
-    param.requires_grad = True
-
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
-
-preprocess = transforms.Compose([
-    transforms.Grayscale(num_output_channels=3),
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
-])
-
-CONFIDENCE_THRESHOLD = 0.65
-ENTROPY_THRESHOLD = 0.72
-
-def encode_rgb_to_base64(rgb_array: np.ndarray) -> str:
-    pil_img = Image.fromarray(rgb_array.astype(np.uint8))
-    buffer = io.BytesIO()
-    pil_img.save(buffer, format="PNG")
-    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return f"data:image/png;base64,{encoded}"
-
-def generate_layer_cam(input_tensor: torch.Tensor, target_layer, target_class_idx: int) -> np.ndarray:
-    targets = [ClassifierOutputTarget(target_class_idx)]
-    with GradCAMPlusPlus(model=model, target_layers=[target_layer]) as cam:
-        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
-
-    heatmap_uint8 = np.uint8(255 * grayscale_cam)
-    heatmap_bgr = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
-    return cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
-
-def compute_normalized_entropy(probs: np.ndarray) -> float:
-    eps = 1e-12
-    entropy = -np.sum(probs * np.log(probs + eps))
-    max_entropy = np.log(len(probs))
-    return float(entropy / max_entropy)
 
 @app.get("/health")
 def health_check():
@@ -91,6 +63,13 @@ def health_check():
 
 @app.post("/analyze")
 async def analyze_mri(file: UploadFile = File(...)):
+    import torch
+    import torch.nn.functional as F
+    from torchvision import transforms
+    import cv2
+    from pytorch_grad_cam import GradCAMPlusPlus
+    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file must be a valid image.")
 
@@ -101,6 +80,16 @@ async def analyze_mri(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Unable to decode uploaded image file.")
 
     resized_rgb = np.array(raw_image.resize((224, 224)))
+    
+    imagenet_mean = [0.485, 0.456, 0.406]
+    imagenet_std = [0.229, 0.224, 0.225]
+    preprocess = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(imagenet_mean, imagenet_std)
+    ])
+    
     input_tensor = preprocess(raw_image).unsqueeze(0).to(device)
 
     with torch.no_grad():
@@ -110,14 +99,31 @@ async def analyze_mri(file: UploadFile = File(...)):
     pred_idx = int(np.argmax(probs))
     pred_class = CLASS_NAMES[pred_idx]
     confidence = float(probs[pred_idx])
-    norm_entropy = compute_normalized_entropy(probs)
+    
+    # Entropy calculation
+    eps = 1e-12
+    entropy = -np.sum(probs * np.log(probs + eps))
+    norm_entropy = float(entropy / np.log(len(probs)))
+    is_ood = bool(confidence < 0.65 or norm_entropy > 0.72)
 
-    is_ood = bool(confidence < CONFIDENCE_THRESHOLD or norm_entropy > ENTROPY_THRESHOLD)
+    # Grad-CAM++ generation
+    def generate_cam(target_layer):
+        targets = [ClassifierOutputTarget(pred_idx)]
+        with GradCAMPlusPlus(model=model, target_layers=[target_layer]) as cam:
+            grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
+        heatmap = np.uint8(255 * grayscale_cam)
+        heatmap_bgr = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        return cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
 
-    # Generate Grad-CAM++ heatmaps safely across network layers
-    cam_early = generate_layer_cam(input_tensor, model.layer2[-1], pred_idx)
-    cam_mid = generate_layer_cam(input_tensor, model.layer3[-1], pred_idx)
-    cam_final = generate_layer_cam(input_tensor, model.layer4[-1], pred_idx)
+    cam_early = generate_cam(model.layer2[-1])
+    cam_mid = generate_cam(model.layer3[-1])
+    cam_final = generate_cam(model.layer4[-1])
+
+    def encode_rgb(rgb):
+        pil_img = Image.fromarray(rgb.astype(np.uint8))
+        buffer = io.BytesIO()
+        pil_img.save(buffer, format="PNG")
+        return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
 
     probabilities = [
         {
@@ -127,19 +133,18 @@ async def analyze_mri(file: UploadFile = File(...)):
         }
         for i in range(len(CLASS_NAMES))
     ]
-    probabilities.sort(key=lambda item: item["probability"], reverse=True)
+    probabilities.sort(key=lambda x: x["probability"], reverse=True)
 
     return {
         "prediction": "Uncertain / Non-MRI Input" if is_ood else pred_class.replace("_", " ").title(),
-        "raw_prediction": pred_class.replace("_", " ").title(),
         "confidence": round(confidence * 100, 2),
         "entropy": round(norm_entropy, 3),
         "is_ood": is_ood,
         "probabilities": probabilities,
         "images": {
-            "original": encode_rgb_to_base64(resized_rgb),
-            "layer2_heatmap": encode_rgb_to_base64(cam_early),
-            "layer3_heatmap": encode_rgb_to_base64(cam_mid),
-            "layer4_heatmap": encode_rgb_to_base64(cam_final),
+            "original": encode_rgb(resized_rgb),
+            "layer2_heatmap": encode_rgb(cam_early),
+            "layer3_heatmap": encode_rgb(cam_mid),
+            "layer4_heatmap": encode_rgb(cam_final),
         }
     }
