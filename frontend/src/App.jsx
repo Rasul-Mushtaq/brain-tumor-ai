@@ -254,7 +254,7 @@ export default function App() {
           <div className="bg-white border border-slate-200 border-t-4 border-t-sky-500 rounded-2xl p-8 shadow-xl">
             <div className="flex flex-col gap-6">
               <figure
-                className="bg-[#070d17] border border-slate-200 rounded-xl p-4 cursor-zoom-in transition-all duration-300 hover:scale-[1.02] hover:border-sky-500 hover:shadow-lg w-[85%] self-start group"
+                className="bg-[#070d17] border border-slate-200 rounded-xl p-4 cursor-zoom-in transition-all duration-300 hover:scale-[1.02] hover:border-sky-500 hover:shadow-lg w-[85%] self-start group relative"
                 onClick={() =>
                   openInspectMode({
                     baseSrc: "/brain_tumor_sample.jpg",
@@ -280,7 +280,7 @@ export default function App() {
               </figure>
 
               <figure
-                className="bg-[#070d17] border border-sky-900/30 rounded-xl p-4 cursor-zoom-in transition-all duration-300 hover:scale-[1.02] hover:border-sky-500 hover:shadow-lg w-[90%] self-end group"
+                className="bg-[#070d17] border border-sky-900/30 rounded-xl p-4 cursor-zoom-in transition-all duration-300 hover:scale-[1.02] hover:border-sky-500 hover:shadow-lg w-[90%] self-end group relative"
                 onClick={() =>
                   openInspectMode({
                     baseSrc: "/brain_tumor_heatmap.jpg",
@@ -312,7 +312,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Methodology Section (Redesigned Editorial Layout) */}
+      {/* Methodology Section */}
       <section
         id="methodology"
         className="max-w-7xl mx-auto px-8 py-20 lg:py-28 border-b border-slate-200"
@@ -380,7 +380,7 @@ export default function App() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
-              className="bg-[#0c1e35] hover:bg-[#163254] text-white font-semibold px-6 py-3.5 rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50"
+              className="bg-[#0c1e35] hover:bg-[#163254] text-white font-semibold px-6 py-3.5 rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
               Upload Custom Scan
             </button>
@@ -394,7 +394,11 @@ export default function App() {
               key={sample.id}
               onClick={() => handleSampleSelect(sample)}
               disabled={loading}
-              className={`flex flex-col bg-white border rounded-2xl p-5 text-left transition-all shadow-sm hover:-translate-y-1 hover:shadow-md ${selectedSampleId === sample.id ? "border-sky-500 border-2 bg-sky-50/40 shadow-sm" : "border-slate-200"}`}
+              className={`flex flex-col bg-white border rounded-2xl p-5 text-left transition-all shadow-sm hover:-translate-y-1 hover:shadow-md cursor-pointer ${
+                selectedSampleId === sample.id
+                  ? "border-sky-500 border-2 bg-sky-50/40 shadow-sm"
+                  : "border-slate-200"
+              }`}
             >
               <div className="w-full h-48 bg-[#070d17] rounded-xl overflow-hidden flex items-center justify-center mb-4 border border-slate-100">
                 <img
@@ -432,10 +436,18 @@ export default function App() {
                   key={stage.id}
                   onClick={() => setActiveStage(stage.id)}
                   disabled={!result || loading}
-                  className={`flex items-start gap-3.5 p-4 bg-slate-50/60 border rounded-xl text-left transition-all ${activeStage === stage.id ? "border-sky-500 bg-sky-50/50 shadow-sm" : "border-slate-200 hover:border-slate-300"} disabled:opacity-50`}
+                  className={`flex items-start gap-3.5 p-4 bg-slate-50/60 border rounded-xl text-left transition-all cursor-pointer ${
+                    activeStage === stage.id
+                      ? "border-sky-500 bg-sky-50/50 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300"
+                  } disabled:opacity-50`}
                 >
                   <span
-                    className={`text-xs font-extrabold pt-0.5 ${activeStage === stage.id ? "text-sky-600" : "text-slate-400"}`}
+                    className={`text-xs font-extrabold pt-0.5 ${
+                      activeStage === stage.id
+                        ? "text-sky-600"
+                        : "text-slate-400"
+                    }`}
                   >
                     {stage.index}
                   </span>
@@ -453,78 +465,85 @@ export default function App() {
           </div>
 
           {/* Viewport Canvas */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-7 flex flex-col shadow-sm">
-            <div className="flex justify-between items-center mb-5 gap-4 min-h-[32px] flex-wrap">
-              <span className="text-xs font-semibold text-slate-600">
-                {loading
-                  ? "Processing scan through inference engine..."
-                  : fileName
-                    ? `Active scan: ${fileName}`
-                    : "No scan loaded"}
-              </span>
-              {result && activeStage !== "original" && (
-                <div className="flex items-center gap-3 text-xs font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <label htmlFor="cam-opacity">
-                    Overlay {Math.round(opacity * 100)}%
-                  </label>
-                  <input
-                    id="cam-opacity"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={opacity}
-                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                    className="accent-sky-500 cursor-pointer"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="bg-[#070d17] rounded-xl min-h-[420px] flex items-center justify-center p-8 mb-6 border border-slate-900">
-              {!result ? (
-                <div className="text-slate-400 text-sm text-center max-w-[280px] leading-relaxed">
-                  Choose any sample scan above or upload an image to begin
-                  inspection.
-                </div>
-              ) : (
-                <div
-                  className="relative inline-flex items-center justify-center max-w-full max-h-[380px] rounded-lg overflow-hidden cursor-zoom-in border border-white/10 transition-transform hover:scale-[1.02] shadow-xl group"
-                  onClick={() =>
-                    openInspectMode({
-                      baseSrc: result.images.original,
-                      overlaySrc:
-                        activeStage !== "original"
-                          ? result.images[activeStage]
-                          : null,
-                      overlayOpacity: opacity,
-                      title: `${currentStage.name} (${fileName})`,
-                      detail: currentStage.summary,
-                    })
-                  }
-                >
-                  <img
-                    src={result.images.original}
-                    alt="Normalized MRI"
-                    className="max-w-full max-h-[380px] w-auto h-auto object-contain block"
-                  />
-                  {activeStage !== "original" && (
-                    <img
-                      src={result.images[activeStage]}
-                      alt="Grad-CAM++ Activation"
-                      className="absolute inset-0 w-full h-full object-contain mix-blend-screen transition-opacity"
-                      style={{ opacity }}
+          <div className="bg-white border border-slate-200 rounded-2xl p-7 flex flex-col shadow-sm justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-5 gap-4 min-h-[32px] flex-wrap">
+                <span className="text-xs font-semibold text-slate-600">
+                  {loading
+                    ? "Processing scan through inference engine..."
+                    : fileName
+                      ? `Active scan: ${fileName}`
+                      : "No scan loaded"}
+                </span>
+                {result && activeStage !== "original" && !loading && (
+                  <div className="flex items-center gap-3 text-xs font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <label htmlFor="cam-opacity">
+                      Overlay {Math.round(opacity * 100)}%
+                    </label>
+                    <input
+                      id="cam-opacity"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={opacity}
+                      onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                      className="accent-sky-500 cursor-pointer"
                     />
-                  )}
-                  <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-[11px] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                    Click to inspect →
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="bg-[#070d17] rounded-xl min-h-[420px] flex items-center justify-center p-8 mb-6 border border-slate-900 relative overflow-hidden">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center">
+                    <div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-slate-300 text-sm font-medium">
+                      Running ResNet18 inference & Grad-CAM++ localization...
+                    </p>
+                  </div>
+                ) : !result ? (
+                  <div className="text-slate-400 text-sm text-center max-w-[280px] leading-relaxed">
+                    Choose any sample scan above or upload an image to begin
+                    inspection.
+                  </div>
+                ) : (
+                  <div
+                    className="relative inline-flex items-center justify-center max-w-full max-h-[380px] rounded-lg overflow-hidden cursor-zoom-in group"
+                    onClick={() =>
+                      openInspectMode({
+                        baseSrc:
+                          activeStage === "original"
+                            ? result.images.original
+                            : result.images[activeStage],
+                        title: currentStage.name,
+                        detail: currentStage.summary,
+                      })
+                    }
+                  >
+                    <img
+                      src={result.images.original}
+                      alt="Base MRI Scan"
+                      className="max-h-[360px] object-contain block rounded-lg select-none"
+                    />
+                    {activeStage !== "original" && (
+                      <img
+                        src={result.images[activeStage]}
+                        alt="Grad-CAM++ Heatmap Overlay"
+                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg mix-blend-screen transition-opacity duration-150"
+                        style={{ opacity: opacity }}
+                      />
+                    )}
+                    <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-sky-400 text-[11px] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      Click image to inspect →
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-5 mt-auto">
-              <strong className="block text-sm font-bold text-[#0c1e35] mb-1.5">
+            <div className="flex flex-col gap-2">
+              <strong className="text-sm font-bold text-[#0c1e35]">
                 {currentStage.name}
               </strong>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -533,153 +552,103 @@ export default function App() {
             </div>
           </div>
 
-          {/* Diagnostic Output */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-7 flex flex-col shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5">
-              Classification Output
-            </h3>
-            {!result ? (
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Probability distributions and confidence diagnostics will appear
-                here once a scan is analyzed.
-              </p>
-            ) : (
-              <div className="flex flex-col h-full">
-                {result.is_ood && (
-                  <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl mb-5">
-                    <strong className="block text-xs font-bold text-orange-900 mb-1">
-                      Out-of-Distribution Input Detected
-                    </strong>
-                    <p className="text-[11px] text-orange-800 leading-relaxed">
-                      Model confidence ({result.confidence}%) or prediction
-                      entropy ({result.entropy}) indicates this image may not be
-                      a valid cranial MRI scan.
-                    </p>
-                  </div>
-                )}
-
-                <div
-                  className={`pb-5 mb-5 border-b border-slate-200 ${result.is_ood ? "text-orange-900" : ""}`}
-                >
-                  <span className="block text-xs font-medium text-slate-400 mb-1">
-                    Primary Prediction
-                  </span>
-                  <div
-                    className={`text-2xl font-extrabold tracking-tight ${result.is_ood ? "text-orange-800 text-xl" : "text-[#0c1e35]"}`}
-                  >
-                    {result.prediction}
-                  </div>
-                  <div className="flex gap-4 text-xs font-medium text-slate-500 mt-2.5">
-                    <span>Confidence: {result.confidence}%</span>
-                    <span>Entropy: {result.entropy}</span>
-                  </div>
+          {/* Classification Output Panel */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-7 flex flex-col shadow-sm justify-between">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5">
+                Classification Output
+              </h3>
+              {!result ? (
+                <div className="text-slate-400 text-sm py-12 text-center leading-relaxed">
+                  Probability distributions and confidence diagnostics will
+                  appear here once a scan is analyzed.
                 </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <div
+                    className={`p-4 rounded-xl border ${
+                      result.is_ood
+                        ? "bg-amber-50 border-amber-200 text-amber-900"
+                        : "bg-sky-50/60 border-sky-200 text-[#0c1e35]"
+                    }`}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-wider block mb-1 opacity-75">
+                      {result.is_ood
+                        ? "Guardrail Triggered"
+                        : "Primary Prediction"}
+                    </span>
+                    <strong className="text-xl font-extrabold block">
+                      {result.prediction}
+                    </strong>
+                    <div className="mt-2 flex gap-4 text-xs font-semibold">
+                      <span>Confidence: {result.confidence}%</span>
+                      <span>Entropy: {result.entropy}</span>
+                    </div>
+                  </div>
 
-                <div className="mb-5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3.5">
-                    Class Distribution
-                  </h4>
-                  <div className="flex flex-col gap-3.5">
-                    {result.probabilities.map((item) => (
-                      <div key={item.raw_label} className="flex flex-col">
-                        <div className="flex justify-between text-xs mb-1.5">
-                          <span className="font-medium text-slate-700">
-                            {item.label}
-                          </span>
-                          <span className="font-bold text-slate-900">
-                            {item.probability}%
-                          </span>
+                  <div className="flex flex-col gap-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Class Probabilities
+                    </span>
+                    {result.probabilities.map((item, idx) => (
+                      <div key={idx} className="flex flex-col gap-1 mb-3">
+                        <div className="flex justify-between text-xs font-medium text-slate-700">
+                          <span>{item.label}</span>
+                          <span className="font-bold">{item.probability}%</span>
                         </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-[#0c1e35] to-sky-500 rounded-full transition-all duration-500"
+                            className={`h-2.5 rounded-full transition-all duration-500 ${
+                              idx === 0
+                                ? "bg-gradient-to-r from-blue-600 to-cyan-400"
+                                : item.probability > 20
+                                  ? "bg-blue-400"
+                                  : "bg-slate-300"
+                            }`}
                             style={{ width: `${item.probability}%` }}
-                          />
+                          ></div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                <div className="mt-auto pt-5 flex items-center gap-3 text-[11px] text-slate-400">
-                  <span>Low activation</span>
-                  <div className="flex-1 h-2 rounded-full bg-gradient-to-r from-blue-900 via-blue-500 via-cyan-400 via-yellow-300 via-red-500 to-rose-900" />
-                  <span>High activation</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+            <div className="pt-6 border-t border-slate-100 text-xs text-slate-400 text-center">
+              ResNet18 + Grad-CAM++ Inference Engine
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Inspect Mode Modal */}
+      {/* Full-Screen Inspect Lightbox Modal */}
       {inspectMedia && (
         <div
-          className="fixed inset-0 bg-[#070d17]/90 backdrop-blur-md flex items-center justify-center z-50 p-6"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => setInspectMedia(null)}
         >
           <div
-            className="bg-[#0c1e35] border border-white/10 rounded-2xl w-[1000px] max-w-[94vw] max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="bg-[#0c1e35] border border-slate-700 rounded-2xl max-w-3xl w-full p-6 text-white relative shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center px-8 py-5 border-b border-white/10 gap-4 flex-wrap">
+            <div className="flex justify-between items-center mb-4">
               <div>
-                <h3 className="text-white text-base font-bold">
-                  {inspectMedia.title}
-                </h3>
-                {inspectMedia.detail && (
-                  <p className="text-slate-400 text-xs mt-1">
-                    {inspectMedia.detail}
-                  </p>
-                )}
+                <h3 className="text-lg font-bold">{inspectMedia.title}</h3>
+                <p className="text-xs text-slate-400">{inspectMedia.detail}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() =>
-                    setInspectZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))
-                  }
-                  className="bg-white/10 hover:bg-sky-500 text-white w-9 h-9 rounded-xl flex items-center justify-center transition-colors font-bold"
-                >
-                  −
-                </button>
-                <span className="text-slate-300 text-xs font-semibold min-w-[48px] text-center">
-                  {Math.round(inspectZoom * 100)}%
-                </span>
-                <button
-                  onClick={() =>
-                    setInspectZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))
-                  }
-                  className="bg-white/10 hover:bg-sky-500 text-white w-9 h-9 rounded-xl flex items-center justify-center transition-colors font-bold"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => setInspectMedia(null)}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors ml-3"
-                >
-                  Exit Inspect Mode
-                </button>
-              </div>
-            </div>
-            <div className="bg-[#050911] flex-1 min-h-[460px] max-h-[75vh] overflow-auto flex items-center justify-center p-8">
-              <div
-                className="relative inline-flex transition-transform origin-center"
-                style={{ transform: `scale(${inspectZoom})` }}
+              <button
+                onClick={() => setInspectMedia(null)}
+                className="text-slate-400 hover:text-white text-xl font-bold p-2 cursor-pointer"
               >
-                <img
-                  src={inspectMedia.baseSrc}
-                  alt={inspectMedia.title}
-                  className="max-w-[82vw] max-h-[68vh] w-auto h-auto object-contain block rounded-lg"
-                />
-                {inspectMedia.overlaySrc && (
-                  <img
-                    src={inspectMedia.overlaySrc}
-                    alt="Heatmap overlay"
-                    className="absolute inset-0 w-full h-full object-contain mix-blend-screen rounded-lg"
-                    style={{ opacity: inspectMedia.overlayOpacity ?? 0.55 }}
-                  />
-                )}
-              </div>
+                ✕
+              </button>
+            </div>
+            <div className="bg-[#070d17] rounded-xl p-4 flex items-center justify-center overflow-hidden max-h-[60vh]">
+              <img
+                src={inspectMedia.baseSrc}
+                alt={inspectMedia.title}
+                className="max-h-[50vh] object-contain rounded"
+              />
             </div>
           </div>
         </div>
