@@ -17,26 +17,25 @@ An end-to-end computer vision and full-stack web application that classifies bra
 ## Project Structure:
 
 ```txt
-Directory structure:
-└── rasul-mushtaq-brain-tumor-ai/
-    ├── README.md
-    ├── backend/
-    │   ├── main.py               # FastAPI + OOD entropy/confidence guardrail + Grad-CAM++
-    │   └── requirements.txt
-    ├── frontend/
-    │   ├── package.json
-    │   ├── postcss.config.js
-    │   ├── tailwind.config.js
-    │   ├── public/
-    │   │   └── index.html
-    │   └── src/
-    │       ├── App.jsx           # Landing page + interactive workbench
-    │       ├── index.css
-    │       ├── index.js
-    │       └── styles/
-    │           └── tailwind.css
-    └── ml_pipeline/
-        └── train.py              # Trains model + auto-exports 4 sample MRI scans
+brain-tumor-ai/
+├── README.md
+├── backend/
+│   ├── main.py               # FastAPI + OOD entropy/confidence guardrail + Grad-CAM++
+│   └── requirements.txt
+├── frontend/
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   ├── public/
+│   │   └── index.html
+│   └── src/
+│       ├── App.jsx           # Landing page + interactive workbench
+│       ├── index.css
+│       ├── index.js
+│       └── styles/
+│           └── tailwind.css
+└── ml_pipeline/
+    └── train.py              # Trains model + auto-exports 4 sample MRI scans
 ```
 
 ## Setup & Local Installation
