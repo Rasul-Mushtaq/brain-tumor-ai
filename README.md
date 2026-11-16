@@ -17,21 +17,26 @@ An end-to-end computer vision and full-stack web application that classifies bra
 ## Project Structure:
 
 ```txt
-brain-tumor-ai/
-├── ml_pipeline/
-│   └── train.py                     # Trains model + auto-exports 4 sample MRI scans
-├── backend/
-│   ├── main.py                      # FastAPI + OOD entropy/confidence guardrail + Grad-CAM++
-│   └── brain_tumor_resnet18.pth
-└── frontend/
-    ├── public/
-    │   └── samples/                 # Auto-populated by train.py
-    │       ├── glioma.jpg
-    │       ├── meningioma.jpg
-    │       ├── pituitary.jpg
-    │       └── notumor.jpg
-    └── src/
-        └── App.jsx                  # Landing page + interactive workbench
+Directory structure:
+└── rasul-mushtaq-brain-tumor-ai/
+    ├── README.md
+    ├── backend/
+    │   ├── main.py               # FastAPI + OOD entropy/confidence guardrail + Grad-CAM++
+    │   └── requirements.txt
+    ├── frontend/
+    │   ├── package.json
+    │   ├── postcss.config.js
+    │   ├── tailwind.config.js
+    │   ├── public/
+    │   │   └── index.html
+    │   └── src/
+    │       ├── App.jsx           # Landing page + interactive workbench
+    │       ├── index.css
+    │       ├── index.js
+    │       └── styles/
+    │           └── tailwind.css
+    └── ml_pipeline/
+        └── train.py              # Trains model + auto-exports 4 sample MRI scans
 ```
 
 ## Setup & Local Installation
@@ -55,7 +60,7 @@ cd backend
 python -m venv .venv
 source .venv\Scripts\activate        # On MacOS: source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Verify the API is active at `http://localhost:8000/health`.
