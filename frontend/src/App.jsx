@@ -508,35 +508,20 @@ export default function App() {
                     inspection.
                   </div>
                 ) : (
-                  <div
-                    className="relative w-full aspect-square max-h-[420px] mx-auto rounded-xl overflow-hidden bg-slate-950/80 flex items-center justify-center border border-slate-800"
-                    onClick={() =>
-                      openInspectMode({
-                        baseSrc:
-                          activeStage === "original"
-                            ? result.images.original
-                            : result.images[activeStage],
-                        title: currentStage.name,
-                        detail: currentStage.summary,
-                      })
-                    }
-                  >
+                  <div className="relative w-full aspect-square max-h-[420px] mx-auto rounded-xl overflow-hidden bg-slate-950/80 flex items-center justify-center">
                     <img
                       src={result.images.original}
                       alt="Base MRI Scan"
-                      className="w-full h-full object-container pointer-events-none"
+                      className="w-full h-full object-contain pointer-events-none"
                     />
                     {activeStage !== "original" && (
                       <img
                         src={result.images[activeStage]}
                         alt="Grad-CAM++ Heatmap Overlay"
-                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg mix-blend-screen transition-opacity duration-75"
+                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg"
                         style={{ opacity: opacity }}
                       />
                     )}
-                    <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-sky-400 text-[11px] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      Click image to inspect →
-                    </div>
                   </div>
                 )}
               </div>
