@@ -509,7 +509,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div
-                    className="relative inline-flex items-center justify-center max-w-full max-h-[380px] rounded-lg overflow-hidden cursor-zoom-in group"
+                    className="relative w-full aspect-square max-h-[420px] mx-auto rounded-xl overflow-hidden bg-slate-950/80 flex items-center justify-center border border-slate-800"
                     onClick={() =>
                       openInspectMode({
                         baseSrc:
@@ -524,13 +524,13 @@ export default function App() {
                     <img
                       src={result.images.original}
                       alt="Base MRI Scan"
-                      className="max-h-[360px] object-contain block rounded-lg select-none"
+                      className="w-full h-full object-container pointer-events-none"
                     />
                     {activeStage !== "original" && (
                       <img
                         src={result.images[activeStage]}
                         alt="Grad-CAM++ Heatmap Overlay"
-                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg mix-blend-screen transition-opacity duration-150"
+                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg mix-blend-screen transition-opacity duration-75"
                         style={{ opacity: opacity }}
                       />
                     )}
