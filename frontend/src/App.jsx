@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const SAMPLE_SCANS = [
   {
@@ -62,6 +62,8 @@ const PIPELINE_STAGES = [
   },
 ];
 
+const WALKTHROUGH_SEQUENCE = ["original", "layer2_heatmap", "layer3_heatmap", "layer4_heatmap"];
+
 const ARCHITECTURE_STEPS = [
   {
     step: "01",
@@ -94,6 +96,10 @@ export default function App() {
   const [opacity, setOpacity] = useState(0.55);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [fadeValue, setFadeValue] = useState(0);
+  const [cropFrameVisible, setCropFrameVisible] = useState(false);
+  const walkthroughTimerRef = useRef(null);
 
   const [inspectMedia, setInspectMedia] = useState(null);
   const [inspectZoom, setInspectZoom] = useState(1);
@@ -103,6 +109,46 @@ export default function App() {
 
   const scrollToWorkbench = () => {
     workbenchRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const playWalkthrough = () => {
+    if (isPlaying) return;
+    if (walkthroughTimerRef.current) {
+      clearTimeout(walkthroughTimerRef.current);
+    }
+    setIsPlaying(true);
+    setFadeValue(0);
+
+    const stages = WALKTHROUGH_SEQUENCE;
+    let idx = 0;
+
+    const showStage = (index) => {
+      setActiveStage(stages[index]);
+      setCropFrameVisible(stages[index] === "original");
+      setFadeValue(0);
+    };
+
+    const advance = () => {
+      if (idx >= stages.length) {
+        setCropFrameVisible(false);
+        setFadeValue(0);
+        setIsPlaying(false);
+        walkthroughTimerRef.current = null;
+        return;
+      }
+
+      showStage(idx);
+
+      walkthroughTimerRef.current = setTimeout(() => {
+        setFadeValue(1);
+        walkthroughTimerRef.current = setTimeout(() => {
+          idx += 1;
+          advance();
+        }, 400);
+      }, 2500);
+    };
+
+    advance();
   };
 
   const runInference = async (fileBlob, displayName) => {
@@ -165,6 +211,18 @@ export default function App() {
     setInspectZoom(1);
     setInspectMedia(mediaObj);
   };
+
+  useEffect(() => {
+    if (result) {
+      playWalkthrough();
+    }
+    return () => {
+      if (walkthroughTimerRef.current) {
+        clearTimeout(walkthroughTimerRef.current);
+        walkthroughTimerRef.current = null;
+      }
+    };
+  }, [result]);
 
   const currentStage =
     PIPELINE_STAGES.find((stage) => stage.id === activeStage) ||
@@ -427,9 +485,18 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-[310px_1fr_330px] gap-8 items-stretch">
           {/* Stage Selector */}
           <div className="bg-white border border-slate-200 rounded-2xl p-7 flex flex-col shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5">
-              Activation Depth
-            </h3>
+            <div className="flex items-center gap-2 mb-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-0">
+                Activation Depth
+              </h3>
+              <button
+                onClick={playWalkthrough}
+                disabled={isPlaying}
+                className="text-xs font-medium text-slate-500 hover:text-sky-600 transition-colors flex items-center gap-1 px-2 py-1.5 rounded border border-slate-200 bg-white disabled:opacity-50"
+              >
+                {isPlaying ? "Simulating..." : "Replay Sequence ↺"}
+              </button>
+            </div>
             <div className="flex flex-col gap-3">
               {PIPELINE_STAGES.map((stage) => (
                 <button
@@ -494,7 +561,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="bg-[#070d17] rounded-xl min-h-[420px] flex items-center justify-center p-8 mb-6 border border-slate-900 relative overflow-hidden">
+              <div className="bg-[#070d17] rounded-xl min-h-[420px] flex items-center justify-center p-8 mb-6 border border-slate-900 relative overflow-hidden transition-all duration-700 ease-in-out">
                 {loading ? (
                   <div className="flex flex-col items-center justify-center gap-4 text-center">
                     <div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
@@ -508,20 +575,45 @@ export default function App() {
                     inspection.
                   </div>
                 ) : (
-                  <div className="relative w-full aspect-square max-h-[420px] mx-auto rounded-xl overflow-hidden bg-slate-950/80 flex items-center justify-center">
+                  <div className="relative w-full aspect-square max-h-[420px] mx-auto rounded-xl overflow-hidden bg-slate-950/80 flex items-center justify-center transition-all duration-700 ease-in-out">
                     <img
                       src={result.images.original}
                       alt="Base MRI Scan"
-                      className="w-full h-full object-contain pointer-events-none"
+                      className="w-full h-full object-contain pointer-events-none transition-all duration-700 ease-in-out"
                     />
+                    {activeStage === "original" && cropFrameVisible && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div
+                          className="relative w-[70%] h-[70%] max-w-[300px] max-h-[300px] border-2 border-sky-500 rounded-lg bg-sky-500/5"
+                          style={{ boxShadow: "inset 0 0 0 1px rgba(14,165,233,0.3)" }}
+                        >
+                          {/* Corner brackets */}
+                          <div className="absolute -3px -3px w-4 h-4 border-t-2 border-l-2 border-sky-400"></div>
+                          <div className="absolute -3px right-0 -3px w-4 h-4 border-t-2 border-r-2 border-sky-400"></div>
+                          <div className="absolute left-0 -3px bottom-0 w-4 h-4 border-b-2 border-l-2 border-sky-400"></div>
+                          <div className="absolute -3px right-0 -3px bottom-0 w-4 h-4 border-b-2 border-r-2 border-sky-400"></div>
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-sky-200 shadow-sm">
+                              224×224
+                            </span>
+                            <span className="text-[10px] text-slate-500 mt-0.5">Normalization Crop</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {activeStage !== "original" && (
                       <img
                         src={result.images[activeStage]}
                         alt="Grad-CAM++ Heatmap Overlay"
-                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg"
+                        className="absolute inset-0 w-full h-full object-contain pointer-events-none rounded-lg transition-all duration-700 ease-in-out"
                         style={{ opacity: opacity }}
                       />
                     )}
+                    {/* Fade overlay between phases */}
+                    <div
+                      className="absolute inset-0 bg-[#0c1e35]/80 transition-all duration-700 ease-in-out pointer-events-none"
+                      style={{ opacity: fadeValue }}
+                    ></div>
                   </div>
                 )}
               </div>
