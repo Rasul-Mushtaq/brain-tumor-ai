@@ -236,16 +236,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-[#0c1e35] font-sans antialiased selection:bg-sky-500 selection:text-white">
       {/* Navigation */}
-      <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-xs">
-        <nav className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
+      <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex justify-between items-center">
           <a
             href="#top"
-            className="text-lg font-bold tracking-tight text-[#0c1e35] flex items-center"
+            className="text-base font-bold tracking-tight text-[#0c1e35] flex items-center"
           >
             Classifying Brain Tumors
           </a>
 
-          <div className="flex items-center gap-8 text-sm font-medium text-slate-700">
+          <div className="flex items-center gap-5 text-sm font-medium text-slate-700">
             <a
               href="#methodology"
               className="hover:text-sky-600 transition-colors"
