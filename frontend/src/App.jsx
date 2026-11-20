@@ -62,7 +62,12 @@ const PIPELINE_STAGES = [
   },
 ];
 
-const WALKTHROUGH_SEQUENCE = ["original", "layer2_heatmap", "layer3_heatmap", "layer4_heatmap"];
+const WALKTHROUGH_SEQUENCE = [
+  "original",
+  "layer2_heatmap",
+  "layer3_heatmap",
+  "layer4_heatmap",
+];
 
 const ARCHITECTURE_STEPS = [
   {
@@ -582,21 +587,23 @@ export default function App() {
                       className="w-full h-full object-contain pointer-events-none transition-all duration-700 ease-in-out"
                     />
                     {activeStage === "original" && cropFrameVisible && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-3">
                         <div
-                          className="relative w-[70%] h-[70%] max-w-[300px] max-h-[300px] border-2 border-sky-500 rounded-lg bg-sky-500/5"
-                          style={{ boxShadow: "inset 0 0 0 1px rgba(14,165,233,0.3)" }}
+                          className="relative w-full h-full border-2 border-sky-500 rounded-lg bg-sky-500/5"
+                          style={{
+                            boxShadow: "inset 0 0 0 1px rgba(14,165,233,0.3)",
+                          }}
                         >
                           {/* Corner brackets */}
-                          <div className="absolute -3px -3px w-4 h-4 border-t-2 border-l-2 border-sky-400"></div>
-                          <div className="absolute -3px right-0 -3px w-4 h-4 border-t-2 border-r-2 border-sky-400"></div>
-                          <div className="absolute left-0 -3px bottom-0 w-4 h-4 border-b-2 border-l-2 border-sky-400"></div>
-                          <div className="absolute -3px right-0 -3px bottom-0 w-4 h-4 border-b-2 border-r-2 border-sky-400"></div>
-                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-sky-200 shadow-sm">
-                              224×224
+                          <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-sky-400"></div>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-sky-400"></div>
+                          <div className="absolute -bottom-2 -left-1 w-4 h-4 border-b-2 border-l-2 border-sky-400"></div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-sky-400"></div>
+
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-sky-600 tracking-wider bg-white px-2 py-0.5 rounded border border-sky-200 shadow-sm">
+                              224×224 Normalization Crop
                             </span>
-                            <span className="text-[10px] text-slate-500 mt-0.5">Normalization Crop</span>
                           </div>
                         </div>
                       </div>
